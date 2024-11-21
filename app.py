@@ -262,16 +262,28 @@ def execute_query(query, params=None):
     conn.commit()
     conn.close()
 
-# Streamlit app
+def call_new_weather_procedure(weather_status):
+    query = "CALL new_weather(%s)"
+    execute_query(query, (weather_status,))
+
+def call_schedule_flights_procedure():
+    query = "CALL ScheduleFlights()"
+    execute_query(query)
+
+def get_closed_runways_count():
+    query = "SELECT ClosedRunways();"
+    result = fetch_data(query)
+    return result[0]['ClosedRunways()'] if result else 0
+
 st.title("Runway and Flight Management System")
 
-menu = ["Flights", "Runways", "Maintenance", "Runway Schedules"]
+menu = ["Flights", "Runways", "Maintenance", "Runway Schedules","Weather"]
 choice = st.sidebar.selectbox("Select Operation", menu)
 
 # 1. Flights Management
 if choice == "Flights":
     st.subheader("Manage Flights")
-    operation = st.radio("Operation", ["Create", "Read", "Update", "Delete"])
+    operation = st.radio("Operation", ["Create", "Read", "Update", "Delete","Schedule Flights"])
 
     if operation == "Create":
         with st.form("create_flight"):
@@ -307,11 +319,15 @@ if choice == "Flights":
             query = "DELETE FROM flights WHERE Flight_ID = %s"
             execute_query(query, (flight_id,))
             st.success(f"Flight ID {flight_id} deleted successfully!")
+    
+    elif operation== "Schedule Flights":
+        call_schedule_flights_procedure()
+        st.success("Schedule Flights procedure executed successfully!")
 
 # 2. Runways Management
 elif choice == "Runways":
     st.subheader("Manage Runways")
-    operation = st.radio("Operation", ["Create", "Read", "Update", "Delete"])
+    operation = st.radio("Operation", ["Create", "Read", "Update", "Delete","Closed Runways Count"])
 
     if operation == "Create":
         with st.form("create_runway"):
@@ -347,27 +363,30 @@ elif choice == "Runways":
             query = "DELETE FROM runways WHERE Runway_ID = %s"
             execute_query(query, (runway_id,))
             st.success(f"Runway ID {runway_id} deleted successfully!")
+    elif operation == "Closed Runways Count":
+        closed_count = get_closed_runways_count()
+        st.write(f"There are {closed_count} closed runways due to rainy or snowy weather.")
 
 # 3. Maintenance Management
 elif choice == "Maintenance":
     st.subheader("Manage Maintenance")
-    operation = st.radio("Operation", ["Create", "Read", "Delete"])
+    operation = st.radio("Operation", [ "Read", "Delete"])
 
-    if operation == "Create":
-        with st.form("create_maintenance"):
-            runway_id = st.number_input("Runway ID", min_value=1, step=1)
-            description = st.text_area("Maintenance Description")
-            submit = st.form_submit_button("Add Maintenance")
+    # if operation == "Create":
+    #     with st.form("create_maintenance"):
+    #         runway_id = st.number_input("Runway ID", min_value=1, step=1)
+    #         description = st.text_area("Maintenance Description")
+    #         submit = st.form_submit_button("Add Maintenance")
 
-            if submit:
-                query = """
-                INSERT INTO maintenance (Runway_ID, Description)
-                VALUES (%s, %s)
-                """
-                execute_query(query, (runway_id, description))
-                st.success(f"Maintenance record for Runway ID {runway_id} added successfully!")
+    #         if submit:
+    #             query = """
+    #             INSERT INTO maintenance (Runway_ID, Description)
+    #             VALUES (%s, %s)
+    #             """
+    #             execute_query(query, (runway_id, description))
+    #             st.success(f"Maintenance record for Runway ID {runway_id} added successfully!")
 
-    elif operation == "Read":
+    if operation == "Read":
         data = fetch_data("SELECT * FROM maintenance")
         st.dataframe(data)
 
@@ -400,18 +419,25 @@ elif choice == "Runway Schedules":
             st.success(f"Runway schedule ID {schedule_id} deleted successfully!")
 
 # 5. Weather Management
-# elif choice == "Weather":
-#     st.subheader("Manage Weather")
-#     operation = st.radio("Operation", ["Read", "Update"])
+elif choice == "Weather":
+    st.subheader("Manage Weather")
+    weather_menu = ["Optimal","Rainy","Snowy"]
+    weather_choice = st.selectbox("Select Operation", weather_menu)
+    if weather_choice:
+        st.write(f"Running procedure for weather condition: {weather_choice}")
+        call_new_weather_procedure(weather_choice)
+        st.success(f"Procedure for '{weather_choice}' executed successfully!")
 
-#     if operation == "Read":
-#         data = fetch_data("SELECT * FROM weather")
-#         st.dataframe(data)
+    # operation = st.radio("Operation", ["Read", "Update"])
 
-#     elif operation == "Update":
-#         current_weather = st.selectbox("Set Current Weather Condition", ["Optimal", "Rainy", "Snowy"])
-#         if st.button("Update Weather Condition"):
-#             query = "UPDATE weather SET Current_Weather = %s"
-#             execute_query(query, (current_weather,))
-#             st.success(f"Weather condition updated to {current_weather}!")
+    # if operation == "Read":
+    #     data = fetch_data("SELECT * FROM weather")
+    #     st.dataframe(data)
+
+    # elif operation == "Update":
+    #     current_weather = st.selectbox("Set Current Weather Condition", ["Optimal", "Rainy", "Snowy"])
+    #     if st.button("Update Weather Condition"):
+    #         query = "UPDATE weather SET Current_Weather = %s"
+    #         execute_query(query, (current_weather,))
+    #         st.success(f"Weather condition updated to {current_weather}!")
 

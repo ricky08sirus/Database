@@ -51,9 +51,8 @@ CREATE TABLE runway_schedules (
 CREATE TABLE weather (
     Current_Weather ENUM('Optimal', 'Rainy', 'Snowy') NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Procedure: ScheduleFlights
 DELIMITER $$
+
 CREATE PROCEDURE ScheduleFlights()
 BEGIN
     DECLARE done INT DEFAULT 0;
@@ -68,13 +67,12 @@ BEGIN
         SELECT Flight_ID, Size, Scheduled_Time
         FROM flights
         WHERE Status = 'Scheduled' AND Runway_ID IS NULL
-        ORDER BY Scheduled_Time;
+        ORDER BY Scheduled_Time;  -- ORDER BY Scheduled_Time is valid here
 
     DECLARE runway_cursor CURSOR FOR
         SELECT Runway_ID, Size
         FROM runways
-        WHERE Runway_Status = 'Available'
-        ORDER BY Scheduled_Time;
+        WHERE Runway_Status = 'Available';  -- Removed ORDER BY Scheduled_Time as it's not valid here
 
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
@@ -133,29 +131,10 @@ BEGIN
 
     CLOSE flight_cursor;
 END$$
+
 DELIMITER ;
 
--- Procedure: UpdateRunwayStatusForWeather
-DELIMITER $$
-CREATE PROCEDURE UpdateRunwayStatusForWeather(
-    IN p_Weather_Condition ENUM('Rainy', 'Snowy', 'Optimal')
-)
-BEGIN
-    IF p_Weather_Condition IN ('Rainy', 'Snowy') THEN
-        UPDATE runways
-        SET Runway_Status = 'Closed'
-        WHERE Shutdown_Weather = p_Weather_Condition
-        AND Runway_Status = 'Available';
-    END IF;
 
-    IF p_Weather_Condition = 'Optimal' THEN
-        UPDATE runways
-        SET Runway_Status = 'Available'
-        WHERE Shutdown_Weather IN ('Rainy', 'Snowy')
-        AND Runway_Status = 'Closed';
-    END IF;
-END$$
-DELIMITER ;
 
 -- Trigger: Maintenance_End
 DELIMITER $$
